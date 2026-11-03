@@ -1,0 +1,60 @@
+===================================================================
+SOCIALWAWE - PROJE DURUMU VE EN SON KALDIĞIMIZ YER
+Tarih: 3 Kasım 2026
+===================================================================
+
+1. TAMAMLANAN İŞLEMLER
+-------------------------------------------------------------------
+[✓] SocialWawe Web & SaaS Platformu tamamen kodlandı ve kuruldu:
+    - Çok kullanıcılı (SaaS) üyelik ve giriş altyapısı
+    - Tekli Video Yükleme & Canlı Instagram Reels Önizleme Stüdyosu
+    - Toplu Video Yükleme & Günlere Otomatik Sıraya Dizme (Auto-Queue)
+    - Sürükle-Bırak İnteraktif İçerik Takvimi
+    - "Yayınlandıktan sonra sunucudan sil" otomatik temizlik motoru
+    - SQLite veritabanı (data/socialwawe.db)
+
+[✓] Meta Developer Tarafında Yapılanlar:
+    - Uygulama Adı: Socialwawe
+    - App ID: 2900813510292181
+    - Business Portfolio: Wawe Journal (Oluşturuldu ve bağlandı)
+    - Instagram ürünü eklendi ("API setup with Unified login")
+    - 1. Adımdaki Configuration oluşturuldu (Configuration ID: 1655779772690432)
+
+
+2. EN SON NEREDE KALDIK? (DEVAM EDİLECEK ADIM)
+-------------------------------------------------------------------
+Meta Developer panelinde şu sayfadayız:
+https://developers.facebook.com/apps/2900813510292181/instagram-business/Unified-Login-API-Setup/
+
+Sayfadaki "2. Generate access tokens" kutusunda kaldık.
+Instagram hesabımızı bağlayıp Access Token almak için kalan 3 küçük adım:
+
+ADIM A — Instagram Hesabını Tester (Test Kullanıcısı) Olarak Ekle:
+  1. Meta panelinde sol menüden "App roles" -> "Roles" sayfasına git.
+  2. "Add People" (Kişi Ekle) butonuna tıkla.
+  3. "Instagram Tester" seçeneğini seçip kendi profesyonel Instagram kullanıcı adını yaz ve ekle.
+
+ADIM B — Instagram'dan Test Davetini Kabul Et:
+  1. Tarayıcıdan Instagram hesabın açıkken şu adrese git:
+     https://www.instagram.com/accounts/manage_access/
+     (Veya telefondan: Instagram Ayarlar -> Web Siteleri ve İzinler -> Uygulamalar ve Web Siteleri -> Test Kullanıcısı Davetleri / Tester Invites)
+  2. "Socialwawe" davetini "Accept / Kabul Et" diyerek onayla.
+
+ADIM C — Token Üret ve SocialWawe Paneline Yapıştır:
+  1. Tekrar Meta Developer'daki "API setup with Unified login" sayfasına dön.
+  2. "2. Generate access tokens" başlığı altındaki mavi "Add account" butonuna tıkla ve Instagram hesabınla giriş yapıp izinleri onayla.
+  3. Listeye eklenen Instagram hesabının yanındaki "Generate token" butonuna basıp çıkan Token'ı kopyala.
+  4. SocialWawe panelinde (http://localhost:3000) sol menüden "Hesaplar & Meta API" sekmesine girip kopyaladığın Token'ı yapıştır ve bağla!
+
+
+3. PROJEYİ BİLGİSAYARDA ÇALIŞTIRMA KOMUTU
+-------------------------------------------------------------------
+Terminali açıp proje klasöründe şu komutu çalıştırman yeterlidir:
+
+  cd /Users/denizgulcan/Desktop/socialwawe
+  npm run dev
+
+Ardından tarayıcıda şu adresi aç:
+  http://localhost:3000
+===================================================================
+
