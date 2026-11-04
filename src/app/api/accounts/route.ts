@@ -8,7 +8,7 @@ export async function GET() {
     const db = getDb();
     const accounts = db
       .prepare(
-        "SELECT * FROM instagram_accounts WHERE user_id = ? ORDER BY created_at DESC"
+        "SELECT * FROM instagram_accounts WHERE user_id = ? ORDER BY is_mock ASC, created_at DESC"
       )
       .all(user.id) as unknown as InstagramAccount[];
 
@@ -80,7 +80,6 @@ export async function POST(req: NextRequest) {
       resolvedUsername || "ig"
     )}`;
 
-    // Verify token & fetch profile from Instagram Graph API if possible
     const baseUrl = accessToken.startsWith("IG")
       ? "https://graph.instagram.com/v21.0"
       : "https://graph.facebook.com/v21.0";
@@ -96,7 +95,8 @@ export async function POST(req: NextRequest) {
 
       if (profileRes.ok && profileData.id) {
         resolvedIgId = profileData.id;
-        resolvedUsername = profileData.username || resolvedUsername || "instagram_user";
+        resolvedUsername =
+          profileData.username || resolvedUsername || "instagram_user";
         resolvedName = profileData.name || resolvedUsername;
         resolvedFollowers = profileData.followers_count || 0;
         if (profileData.profile_picture_url) {
@@ -171,3 +171,4 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: "Yetkisiz erişim" }, { status: 401 });
   }
 }
+

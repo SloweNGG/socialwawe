@@ -1,4 +1,7 @@
 import { InstagramAccount, ScheduledPost } from "./db";
+import path from "node:path";
+import fs from "node:fs";
+import { UPLOADS_DIR } from "./storage";
 
 export interface PublishResult {
   success: boolean;
@@ -9,8 +12,6 @@ export interface PublishResult {
 }
 
 function getGraphBaseUrl(accessToken: string): string {
-  // Tokens starting with IG... use graph.instagram.com (Instagram API with Instagram Login)
-  // Tokens starting with EAA... use graph.facebook.com (Instagram Graph API with Facebook Login)
   if (accessToken.startsWith("IG")) {
     return "https://graph.instagram.com/v21.0";
   }
@@ -39,52 +40,122 @@ export async function publishVideoToInstagram(
 
   // 2. Real Instagram Graph API Publishing Flow
   const baseUrl = getGraphBaseUrl(account.access_token);
-
-  // Resolve full public URL for the video so Meta servers can download it
-  let resolvedVideoUrl = post.video_url;
-  if (resolvedVideoUrl.startsWith("/")) {
-    if (!publicBaseUrl || !publicBaseUrl.startsWith("http")) {
-      return {
-        success: false,
-        error:
-          "Instagram Graph API videoyu indirebilmek için herkese açık bir URL (Public Base URL / Cloudflare R2 / Ngrok) gerektirir. Lütfen Ayarlar > Meta API Kurulumu bölümünden Public URL girin.",
-      };
-    }
-    resolvedVideoUrl = `${publicBaseUrl.replace(/\/$/, "")}${resolvedVideoUrl}`;
-  }
+  const localFilePath = path.join(UPLOADS_DIR, path.basename(post.video_filename));
+  const hasLocalFile = fs.existsSync(localFilePath);
 
   try {
-    // Step A: Create Media Container
-    const createParams = new URLSearchParams({
-      media_type: post.media_type || "REELS",
-      video_url: resolvedVideoUrl,
-      access_token: account.access_token,
-    });
+    let containerId = "";
 
-    if (post.caption && post.media_type !== "STORIES") {
-      createParams.set("caption", post.caption);
+    // Prefer Direct Resumable Binary Upload (rupload.facebook.com) when file is on local disk
+    // so the user doesn't even need ngrok/S3/R2!
+    if (hasLocalFile) {
+      const fileBuffer = fs.readFileSync(localFilePath);
+
+      const initParams = new URLSearchParams({
+        upload_type: "resumable",
+        media_type: post.media_type || "REELS",
+        access_token: account.access_token,
+      });
+
+      if (post.caption && post.media_type !== "STORIES") {
+        initParams.set("caption", post.caption);
+      }
+
+      if (post.thumb_offset_ms && post.thumb_offset_ms > 0 && post.media_type !== "STORIES") {
+        initParams.set("thumb_offset", String(Math.round(post.thumb_offset_ms)));
+      }
+
+      const initRes = await fetch(
+        `${baseUrl}/${account.ig_user_id}/media?${initParams.toString()}`,
+        { method: "POST" }
+      );
+      const initData = await initRes.json();
+
+      if (!initRes.ok || initData.error || !initData.id) {
+        return {
+          success: false,
+          error:
+            initData?.error?.message ||
+            "Instagram Resumable Media Container oluşturulamadı.",
+        };
+      }
+
+      containerId = initData.id;
+      const uploadUri =
+        initData.uri ||
+        `https://rupload.facebook.com/ig-api-upload/v21.0/${containerId}`;
+
+      // Upload raw binary bytes directly to Meta's rupload server
+      const uploadRes = await fetch(uploadUri, {
+        method: "POST",
+        headers: {
+          Authorization: `OAuth ${account.access_token}`,
+          offset: "0",
+          file_size: fileBuffer.length.toString(),
+          "Content-Type": "application/octet-stream",
+        },
+        body: fileBuffer,
+      });
+
+      const uploadData = await uploadRes.json().catch(() => ({}));
+      if (!uploadRes.ok || uploadData.error) {
+        return {
+          success: false,
+          containerId,
+          error:
+            uploadData?.error?.message ||
+            `Video dosyası Instagram sunucusuna yüklenemedi (HTTP ${uploadRes.status}).`,
+        };
+      }
+    } else {
+      // Fallback to public URL upload if file is hosted externally
+      let resolvedVideoUrl = post.video_url;
+      if (resolvedVideoUrl.startsWith("/")) {
+        if (!publicBaseUrl || !publicBaseUrl.startsWith("http")) {
+          return {
+            success: false,
+            error:
+              "Video dosyası diskte bulunamadı (veya bir demo kaydı). Lütfen bilgisayarınızdan gerçek bir MP4 video dosyası yükleyip tekrar deneyin.",
+          };
+        }
+        resolvedVideoUrl = `${publicBaseUrl.replace(/\/$/, "")}${resolvedVideoUrl}`;
+      }
+
+      const createParams = new URLSearchParams({
+        media_type: post.media_type || "REELS",
+        video_url: resolvedVideoUrl,
+        access_token: account.access_token,
+      });
+
+      if (post.caption && post.media_type !== "STORIES") {
+        createParams.set("caption", post.caption);
+      }
+
+      if (post.thumb_offset_ms && post.thumb_offset_ms > 0 && post.media_type !== "STORIES") {
+        createParams.set("thumb_offset", String(Math.round(post.thumb_offset_ms)));
+      }
+
+      const containerRes = await fetch(
+        `${baseUrl}/${account.ig_user_id}/media?${createParams.toString()}`,
+        { method: "POST" }
+      );
+      const containerData = await containerRes.json();
+
+      if (!containerRes.ok || containerData.error || !containerData.id) {
+        return {
+          success: false,
+          error:
+            containerData?.error?.message ||
+            "Instagram Media Container oluşturulamadı.",
+        };
+      }
+
+      containerId = containerData.id;
     }
 
-    const containerRes = await fetch(
-      `${baseUrl}/${account.ig_user_id}/media?${createParams.toString()}`,
-      { method: "POST" }
-    );
-    const containerData = await containerRes.json();
-
-    if (!containerRes.ok || containerData.error || !containerData.id) {
-      return {
-        success: false,
-        error:
-          containerData?.error?.message ||
-          "Instagram Media Container oluşturulamadı.",
-      };
-    }
-
-    const containerId: string = containerData.id;
-
-    // Step B: Poll Container Status until FINISHED (max ~90 seconds)
+    // Step B: Poll Container Status until FINISHED (max ~120 seconds)
     let isReady = false;
-    for (let attempt = 0; attempt < 18; attempt++) {
+    for (let attempt = 0; attempt < 24; attempt++) {
       await sleep(5000);
       const statusRes = await fetch(
         `${baseUrl}/${containerId}?fields=status_code,status&access_token=${encodeURIComponent(
@@ -98,7 +169,10 @@ export async function publishVideoToInstagram(
         break;
       }
 
-      if (statusData.status_code === "ERROR" || statusData.status_code === "EXPIRED") {
+      if (
+        statusData.status_code === "ERROR" ||
+        statusData.status_code === "EXPIRED"
+      ) {
         return {
           success: false,
           containerId,
@@ -113,7 +187,8 @@ export async function publishVideoToInstagram(
       return {
         success: false,
         containerId,
-        error: "Instagram video işleme süresi zaman aşımına uğradı (FINISHED bekleniyor).",
+        error:
+          "Instagram video işleme süresi zaman aşımına uğradı (FINISHED bekleniyor).",
       };
     }
 
@@ -134,7 +209,8 @@ export async function publishVideoToInstagram(
         success: false,
         containerId,
         error:
-          publishData?.error?.message || "Instagram media_publish işlemi başarısız oldu.",
+          publishData?.error?.message ||
+          "Instagram media_publish işlemi başarısız oldu.",
       };
     }
 
@@ -170,4 +246,3 @@ export async function publishVideoToInstagram(
     };
   }
 }
-

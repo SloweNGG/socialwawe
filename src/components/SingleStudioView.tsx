@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   Upload,
   Calendar,
@@ -10,8 +10,9 @@ import {
   CheckCircle2,
   Film,
   Send,
-  Hash,
+  Image as ImageIcon,
 } from "lucide-react";
+import HashtagGroupsPicker from "./HashtagGroupsPicker";
 
 interface Account {
   id: string;
@@ -33,6 +34,11 @@ export default function SingleStudioView({ accounts, onScheduled }: Props) {
     "REELS"
   );
   const [caption, setCaption] = useState<string>("");
+
+  // Thumbnail frame offset in seconds (converted to ms for Instagram API thumb_offset)
+  const [thumbOffsetSec, setThumbOffsetSec] = useState<number>(0);
+  const [videoDuration, setVideoDuration] = useState<number>(30);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
   const defaultDateTime = (() => {
     const d = new Date(Date.now() + 2 * 60 * 60 * 1000);
@@ -63,6 +69,7 @@ export default function SingleStudioView({ accounts, onScheduled }: Props) {
     const localPreview = URL.createObjectURL(file);
     setUploading(true);
     setStatusMessage(null);
+    setThumbOffsetSec(0);
 
     try {
       const formData = new FormData();
@@ -80,17 +87,27 @@ export default function SingleStudioView({ accounts, onScheduled }: Props) {
           videoUrl: data.videoUrl,
           previewUrl: localPreview,
         });
-        if (!caption) {
-          const cleanName = file.name
-            .replace(/\.[^/.]+$/, "")
-            .replace(/[_-]+/g, " ");
-          setCaption(`${cleanName} 🔥\n\n#reels #keşfet #instagram`);
-        }
       } else {
         setStatusMessage(data.error || "Video yüklenemedi.");
       }
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleThumbSliderChange = (sec: number) => {
+    setThumbOffsetSec(sec);
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = sec;
+    }
+  };
+
+  const handleCaptureCurrentFrame = () => {
+    if (videoRef.current) {
+      const current = Number(videoRef.current.currentTime.toFixed(1));
+      setThumbOffsetSec(current);
+      videoRef.current.pause();
     }
   };
 
@@ -120,6 +137,7 @@ export default function SingleStudioView({ accounts, onScheduled }: Props) {
           videoUrl: uploadedFile.videoUrl,
           videoSizeBytes: uploadedFile.sizeBytes,
           caption,
+          thumbOffsetMs: Math.round(thumbOffsetSec * 1000),
           scheduledAt: publishNow
             ? new Date().toISOString()
             : new Date(scheduledAt).toISOString(),
@@ -150,13 +168,6 @@ export default function SingleStudioView({ accounts, onScheduled }: Props) {
   const activeAccount =
     accounts.find((a) => a.id === selectedAccountId) || accounts[0];
 
-  const quickHashtags = [
-    "#reels #keşfet #viral #fyp",
-    "#motivasyon #girişimcilik #başarı",
-    "#mizah #komedi #eğlence #reelsvideo",
-    "#teknoloji #yapayzeka #yazılım",
-  ];
-
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
       {/* Left Form */}
@@ -168,7 +179,7 @@ export default function SingleStudioView({ accounts, onScheduled }: Props) {
               Tekli Video Yükle & Zamanla
             </h2>
             <p className="text-xs text-gray-400 mt-0.5">
-              Videonuzu yükleyin, açıklamasını ve yayınlanacağı tarih/saati seçin.
+              Videonuzu yükleyin, kapak karesini, açıklamasını ve yayınlanacağı tarih/saati seçin.
             </p>
           </div>
         </div>
@@ -258,6 +269,50 @@ export default function SingleStudioView({ accounts, onScheduled }: Props) {
           </label>
         </div>
 
+        {/* Thumbnail (Cover Frame) Selector */}
+        {uploadedFile && mediaType !== "STORIES" && (
+          <div className="p-4 rounded-2xl bg-[#0b0d14] border border-pink-500/25 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <ImageIcon className="w-4 h-4 text-pink-400" />
+                <span className="text-xs font-bold text-white">
+                  Reels Kapak Karesi (Thumbnail) Saniyesi
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-pink-500/15 text-pink-300 border border-pink-500/30">
+                  {thumbOffsetSec.toFixed(1)}. Saniye ({Math.round(thumbOffsetSec * 1000)} ms)
+                </span>
+                <button
+                  type="button"
+                  onClick={handleCaptureCurrentFrame}
+                  className="text-xs px-3 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-white font-medium transition cursor-pointer"
+                >
+                  📸 Önizlemedeki Anlık Kareyi Seç
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <input
+                type="range"
+                min={0}
+                max={Math.max(1, Number(videoDuration.toFixed(1)))}
+                step={0.1}
+                value={thumbOffsetSec}
+                onChange={(e) => handleThumbSliderChange(Number(e.target.value))}
+                className="w-full accent-pink-500 cursor-pointer"
+              />
+              <div className="flex justify-between text-[10px] text-gray-500">
+                <span>0.0 sn (Başlangıç)</span>
+                <span>Kaydırıcıyı hareket ettirerek sağdaki telefonda kapak karesini görün</span>
+                <span>{videoDuration.toFixed(1)} sn (Bitiş)</span>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Caption & Hashtags */}
         <div>
           <div className="flex items-center justify-between mb-1.5">
@@ -276,25 +331,11 @@ export default function SingleStudioView({ accounts, onScheduled }: Props) {
             className="w-full rounded-xl bg-[#0b0d14] border border-white/10 p-3.5 text-sm text-white focus:border-pink-500 focus:outline-none"
           />
 
-          <div className="flex flex-wrap items-center gap-1.5 mt-2">
-            <span className="text-[11px] text-gray-500 flex items-center gap-1 mr-1">
-              <Hash className="w-3 h-3" /> Hızlı Etiket:
-            </span>
-            {quickHashtags.map((tagGroup, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() =>
-                  setCaption((prev) =>
-                    prev ? `${prev.trim()}\n${tagGroup}` : tagGroup
-                  )
-                }
-                className="text-[11px] px-2.5 py-1 rounded-lg bg-[#0b0d14] border border-white/10 hover:border-pink-500/40 text-gray-300 transition"
-              >
-                + {tagGroup.split(" ").slice(0, 2).join(" ")}...
-              </button>
-            ))}
-          </div>
+          <HashtagGroupsPicker
+            onSelectHashtags={(tags) =>
+              setCaption((prev) => (prev ? `${prev.trim()}\n${tags}` : tags))
+            }
+          />
         </div>
 
         {/* Schedule Date/Time & Auto-Delete Toggle */}
@@ -362,7 +403,7 @@ export default function SingleStudioView({ accounts, onScheduled }: Props) {
       </div>
 
       {/* Right Phone Mockup Preview */}
-      <div className="lg:col-span-5 xl:col-span-4 flex flex-col items-center justify-center">
+      <div className="lg:col-span-5 xl:col-span-4 flex flex-col items-center justify-center space-y-3">
         <div className="w-[290px] h-[560px] rounded-[38px] border-[6px] border-[#222638] bg-[#06070b] shadow-2xl overflow-hidden relative flex flex-col justify-between">
           {/* Top Notch */}
           <div className="absolute top-2 inset-x-0 flex justify-center z-20">
@@ -373,11 +414,18 @@ export default function SingleStudioView({ accounts, onScheduled }: Props) {
           <div className="absolute inset-0 bg-gradient-to-b from-gray-900 via-[#121521] to-black flex items-center justify-center">
             {uploadedFile?.previewUrl ? (
               <video
+                ref={videoRef}
                 src={uploadedFile.previewUrl}
                 controls
                 loop
                 muted
                 playsInline
+                onLoadedMetadata={(e) => {
+                  const dur = e.currentTarget.duration;
+                  if (dur && !isNaN(dur) && isFinite(dur)) {
+                    setVideoDuration(dur);
+                  }
+                }}
                 className="w-full h-full object-cover"
               />
             ) : (
@@ -391,15 +439,17 @@ export default function SingleStudioView({ accounts, onScheduled }: Props) {
           </div>
 
           {/* Overlay Top */}
-          <div className="relative z-10 p-4 pt-7 flex items-center justify-between text-xs font-bold text-white drop-shadow">
+          <div className="relative z-10 p-4 pt-7 flex items-center justify-between text-xs font-bold text-white drop-shadow pointer-events-none">
             <span>Reels</span>
             <span className="text-[10px] px-2 py-0.5 rounded-full bg-black/50 backdrop-blur">
-              {mediaType}
+              {thumbOffsetSec > 0
+                ? `Kapak: ${thumbOffsetSec.toFixed(1)}s`
+                : mediaType}
             </span>
           </div>
 
           {/* Overlay Bottom Caption */}
-          <div className="relative z-10 p-4 bg-gradient-to-t from-black/90 via-black/50 to-transparent space-y-1.5">
+          <div className="relative z-10 p-4 pb-12 bg-gradient-to-t from-black/90 via-black/50 to-transparent space-y-1.5 pointer-events-none">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-amber-500 via-pink-500 to-purple-600" />
               <span className="text-xs font-bold text-white">
@@ -415,4 +465,3 @@ export default function SingleStudioView({ accounts, onScheduled }: Props) {
     </div>
   );
 }
-

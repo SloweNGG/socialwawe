@@ -36,6 +36,11 @@ export async function POST(req: NextRequest) {
     const user = await getCurrentUser();
     const body = await req.json();
     const db = getDb();
+    try {
+      db.exec("ALTER TABLE scheduled_posts ADD COLUMN thumb_offset_ms INTEGER NOT NULL DEFAULT 0;");
+    } catch {
+      // column already exists
+    }
     const now = new Date().toISOString();
 
     // Supports single item or array of items (for Bulk Auto-Queue)
@@ -45,9 +50,9 @@ export async function POST(req: NextRequest) {
     const insertStmt = db.prepare(`
       INSERT INTO scheduled_posts (
         id, user_id, account_id, media_type, video_filename, video_original_name,
-        video_url, video_size_bytes, caption, scheduled_at, delete_after_publish,
+        video_url, video_size_bytes, caption, thumb_offset_ms, scheduled_at, delete_after_publish,
         file_deleted, status, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'scheduled', ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'scheduled', ?)
     `);
 
     for (const item of items) {
@@ -66,6 +71,7 @@ export async function POST(req: NextRequest) {
         item.videoUrl || "/api/videos/external_video.mp4",
         Number(item.videoSizeBytes || 0),
         (item.caption || "").trim(),
+        Math.max(0, Math.round(Number(item.thumbOffsetMs || 0))),
         new Date(item.scheduledAt).toISOString(),
         item.deleteAfterPublish === false || item.deleteAfterPublish === 0 ? 0 : 1,
         now

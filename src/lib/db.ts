@@ -45,6 +45,7 @@ export interface ScheduledPost {
   video_url: string;
   video_size_bytes: number;
   caption: string;
+  thumb_offset_ms: number;
   scheduled_at: string;
   delete_after_publish: number;
   file_deleted: number;
@@ -64,6 +65,14 @@ export interface AppSettings {
   public_base_url: string;
   default_delete_after_publish: number;
   default_queue_times: string;
+}
+
+export interface HashtagGroup {
+  id: string;
+  user_id: string;
+  name: string;
+  hashtags: string;
+  created_at: string;
 }
 
 const globalForDb = globalThis as unknown as {
@@ -120,6 +129,7 @@ function initSchema(db: DatabaseSync) {
       video_url TEXT NOT NULL,
       video_size_bytes INTEGER NOT NULL DEFAULT 0,
       caption TEXT NOT NULL DEFAULT '',
+      thumb_offset_ms INTEGER NOT NULL DEFAULT 0,
       scheduled_at TEXT NOT NULL,
       delete_after_publish INTEGER NOT NULL DEFAULT 1,
       file_deleted INTEGER NOT NULL DEFAULT 0,
@@ -140,6 +150,14 @@ function initSchema(db: DatabaseSync) {
       default_delete_after_publish INTEGER NOT NULL DEFAULT 1,
       default_queue_times TEXT NOT NULL DEFAULT '["19:00"]'
     );
+
+    CREATE TABLE IF NOT EXISTS hashtag_groups (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      hashtags TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
   `);
 
   // Seed default user and demo account if database is empty
@@ -156,82 +174,5 @@ function initSchema(db: DatabaseSync) {
       INSERT INTO app_settings (user_id, meta_app_id, meta_app_secret, public_base_url, default_delete_after_publish, default_queue_times)
       VALUES (?, '', '', '', 1, '["13:00", "19:30"]')
     `).run(userId);
-
-    const accId = "ig_demo_1";
-    const expires = new Date(Date.now() + 55 * 24 * 60 * 60 * 1000).toISOString();
-    db.prepare(`
-      INSERT INTO instagram_accounts (
-        id, user_id, ig_user_id, username, display_name, avatar_url,
-        access_token, token_expires_at, is_mock, followers_count, status, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      accId,
-      userId,
-      "17841405822304914",
-      "socialwawe.tr",
-      "SocialWawe Medya (Simülasyon)",
-      "https://api.dicebear.com/9.x/shapes/svg?seed=socialwawe",
-      "IGQVJ_SIMULATION_TOKEN_DEMO",
-      expires,
-      1,
-      14800,
-      "active",
-      now
-    );
-
-    // Seed 2 sample scheduled posts so the calendar and dashboard look rich out of the box
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(19, 30, 0, 0);
-
-    const dayAfter = new Date();
-    dayAfter.setDate(dayAfter.getDate() + 2);
-    dayAfter.setHours(19, 30, 0, 0);
-
-    db.prepare(`
-      INSERT INTO scheduled_posts (
-        id, user_id, account_id, media_type, video_filename, video_original_name,
-        video_url, video_size_bytes, caption, scheduled_at, delete_after_publish,
-        file_deleted, status, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      "post_demo_1",
-      userId,
-      accId,
-      "REELS",
-      "demo_reel_1.mp4",
-      "motivasyon_kesit_01.mp4",
-      "/api/videos/demo_reel_1.mp4",
-      14250000,
-      "Başarı tesadüf değildir, her gün atılan küçük adımların toplamıdır. 🚀 #motivasyon #girişimcilik #reels #keşfet",
-      tomorrow.toISOString(),
-      1,
-      0,
-      "scheduled",
-      now
-    );
-
-    db.prepare(`
-      INSERT INTO scheduled_posts (
-        id, user_id, account_id, media_type, video_filename, video_original_name,
-        video_url, video_size_bytes, caption, scheduled_at, delete_after_publish,
-        file_deleted, status, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      "post_demo_2",
-      userId,
-      accId,
-      "REELS",
-      "demo_reel_2.mp4",
-      "yapay_zeka_ipuclari_02.mp4",
-      "/api/videos/demo_reel_2.mp4",
-      18900000,
-      "Bu 3 otomasyon aracıyla haftada 10 saat tasarruf edin! Kaydetmeyi unutmayın 📌 #yapayzeka #otomasyon #teknoloji",
-      dayAfter.toISOString(),
-      1,
-      0,
-      "scheduled",
-      now
-    );
   }
 }

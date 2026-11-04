@@ -12,6 +12,7 @@ import {
   Film,
   ShieldCheck,
 } from "lucide-react";
+import HashtagGroupsPicker from "./HashtagGroupsPicker";
 
 interface Account {
   id: string;
@@ -57,9 +58,8 @@ export default function BulkQueueView({ accounts, onScheduled }: Props) {
   >("daily_1");
   const [timeSlot1, setTimeSlot1] = useState<string>("19:00");
   const [timeSlot2, setTimeSlot2] = useState<string>("13:00");
-  const [sharedHashtags, setSharedHashtags] = useState<string>(
-    "#reels #keşfet #viral #instagramturkiye"
-  );
+  const [defaultThumbSec, setDefaultThumbSec] = useState<number>(1.0);
+  const [sharedHashtags, setSharedHashtags] = useState<string>("");
   const [deleteAfterPublish, setDeleteAfterPublish] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -212,6 +212,7 @@ export default function BulkQueueView({ accounts, onScheduled }: Props) {
           videoUrl: item.videoUrl || `/api/videos/${item.videoFilename}`,
           videoSizeBytes: item.videoSizeBytes,
           caption: fullCaption,
+          thumbOffsetMs: Math.round(defaultThumbSec * 1000),
           scheduledAt,
           deleteAfterPublish,
         };
@@ -365,6 +366,26 @@ export default function BulkQueueView({ accounts, onScheduled }: Props) {
 
           <div>
             <label className="block text-xs text-gray-400 mb-1.5">
+              Varsayılan Kapak Karesi Saniyesi (İlk siyah ekranı atlamak için)
+            </label>
+            <div className="flex items-center gap-3">
+              <input
+                type="number"
+                min={0}
+                max={60}
+                step={0.5}
+                value={defaultThumbSec}
+                onChange={(e) => setDefaultThumbSec(Number(e.target.value))}
+                className="w-24 rounded-xl bg-[#0b0d14] border border-white/10 px-3 py-2 text-sm text-white focus:border-pink-500 focus:outline-none"
+              />
+              <span className="text-xs text-gray-400">
+                saniye ({Math.round(defaultThumbSec * 1000)} ms)
+              </span>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs text-gray-400 mb-1.5">
               Tüm Videolara Eklenecek Ortak Hashtag / Alt Metin
             </label>
             <textarea
@@ -373,6 +394,13 @@ export default function BulkQueueView({ accounts, onScheduled }: Props) {
               onChange={(e) => setSharedHashtags(e.target.value)}
               placeholder="#reels #keşfet"
               className="w-full rounded-xl bg-[#0b0d14] border border-white/10 p-3 text-xs text-white focus:border-pink-500 focus:outline-none"
+            />
+            <HashtagGroupsPicker
+              onSelectHashtags={(tags) =>
+                setSharedHashtags((prev) =>
+                  prev ? `${prev.trim()} ${tags}` : tags
+                )
+              }
             />
           </div>
 
