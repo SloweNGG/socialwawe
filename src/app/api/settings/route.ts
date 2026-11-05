@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb, AppSettings } from "@/lib/db";
+import { getDb, ensureCloudSyncedDb, syncRowToCloud, AppSettings } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 
 export async function GET() {
   try {
+    await ensureCloudSyncedDb();
     const user = await getCurrentUser();
     const db = getDb();
     let settings = db
@@ -15,6 +16,7 @@ export async function GET() {
         `INSERT INTO app_settings (user_id, meta_app_id, meta_app_secret, public_base_url, default_delete_after_publish, default_queue_times)
          VALUES (?, '', '', '', 1, '["19:00"]')`
       ).run(user.id);
+      await syncRowToCloud("app_settings", "user_id", user.id);
       settings = db
         .prepare("SELECT * FROM app_settings WHERE user_id = ?")
         .get(user.id) as unknown as AppSettings;
@@ -28,6 +30,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    await ensureCloudSyncedDb();
     const user = await getCurrentUser();
     const body = await req.json();
     const db = getDb();
@@ -59,6 +62,8 @@ export async function POST(req: NextRequest) {
         ? default_queue_times
         : JSON.stringify(default_queue_times)
     );
+
+    await syncRowToCloud("app_settings", "user_id", user.id);
 
     const updated = db
       .prepare("SELECT * FROM app_settings WHERE user_id = ?")

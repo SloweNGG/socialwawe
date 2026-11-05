@@ -1,13 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
 import { processSinglePost, runDueScheduledPosts } from "@/lib/scheduler";
+
+// GET handler so external cron jobs / Appwrite Scheduled Functions can trigger due posts 24/7
+export async function GET() {
+  try {
+    const result = await runDueScheduledPosts();
+    return NextResponse.json({ ok: true, ...result });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Cron hatası";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
-    await getCurrentUser();
-    const body = await req.json();
+    const body = await req.json().catch(() => ({ action: "runDue" }));
 
-    if (body.action === "runDue") {
+    if (body.action === "runDue" || !body.postId) {
       const result = await runDueScheduledPosts();
       return NextResponse.json(result);
     }
@@ -29,4 +38,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-

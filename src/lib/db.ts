@@ -1,13 +1,32 @@
 import { DatabaseSync } from "node:sqlite";
 import path from "node:path";
 import fs from "node:fs";
+import os from "node:os";
 import crypto from "node:crypto";
+import {
+  pullAllFromAppwriteToSqlite,
+  upsertAppwriteRow,
+  deleteAppwriteRow,
+} from "./appwrite";
 
-const DATA_DIR = path.join(process.cwd(), "data");
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
+function resolveDataDir(): string {
+  const localDir = path.join(process.cwd(), "data");
+  try {
+    if (!fs.existsSync(localDir)) {
+      fs.mkdirSync(localDir, { recursive: true });
+    }
+    fs.accessSync(localDir, fs.constants.W_OK);
+    return localDir;
+  } catch {
+    const tmpDir = path.join(os.tmpdir(), "socialwawe_data");
+    if (!fs.existsSync(tmpDir)) {
+      fs.mkdirSync(tmpDir, { recursive: true });
+    }
+    return tmpDir;
+  }
 }
 
+const DATA_DIR = resolveDataDir();
 const DB_PATH = path.join(DATA_DIR, "socialwawe.db");
 
 export interface User {
@@ -39,11 +58,12 @@ export interface ScheduledPost {
   user_id: string;
   account_id: string;
   account_username?: string;
-  media_type: "REELS" | "VIDEO" | "STORIES";
+  media_type: "REELS" | "VIDEO" | "STORIES" | "IMAGE" | "CAROUSEL";
   video_filename: string;
   video_original_name: string;
   video_url: string;
   video_size_bytes: number;
+  carousel_files?: string; // JSON string of filenames for CAROUSEL posts
   caption: string;
   thumb_offset_ms: number;
   scheduled_at: string;
@@ -75,8 +95,18 @@ export interface HashtagGroup {
   created_at: string;
 }
 
+export interface CaptionTemplate {
+  id: string;
+  user_id: string;
+  folder: string;
+  title: string;
+  content: string;
+  created_at: string;
+}
+
 const globalForDb = globalThis as unknown as {
   __socialwawe_db?: DatabaseSync;
+  __socialwawe_last_pull?: number;
 };
 
 export function hashPassword(password: string): string {
@@ -91,6 +121,39 @@ export function getDb(): DatabaseSync {
     globalForDb.__socialwawe_db = db;
   }
   return globalForDb.__socialwawe_db;
+}
+
+export async function ensureCloudSyncedDb(): Promise<DatabaseSync> {
+  const db = getDb();
+  const now = Date.now();
+  // Pull from Appwrite Cloud if not pulled in the last 10 seconds
+  if (!globalForDb.__socialwawe_last_pull || now - globalForDb.__socialwawe_last_pull > 10000) {
+    globalForDb.__socialwawe_last_pull = now;
+    await pullAllFromAppwriteToSqlite(db);
+  }
+  return db;
+}
+
+export function syncRowToCloud(
+  table: string,
+  pkColumn: string,
+  pkValue: string
+): void {
+  try {
+    const db = getDb();
+    const row = db
+      .prepare(`SELECT * FROM ${table} WHERE ${pkColumn} = ?`)
+      .get(pkValue) as unknown as Record<string, unknown> | undefined;
+    if (row) {
+      upsertAppwriteRow(table, pkValue, row).catch(() => {});
+    }
+  } catch {
+    // ignore
+  }
+}
+
+export function deleteRowFromCloud(table: string, pkValue: string): void {
+  deleteAppwriteRow(table, pkValue).catch(() => {});
 }
 
 function initSchema(db: DatabaseSync) {
@@ -128,6 +191,7 @@ function initSchema(db: DatabaseSync) {
       video_original_name TEXT NOT NULL,
       video_url TEXT NOT NULL,
       video_size_bytes INTEGER NOT NULL DEFAULT 0,
+      carousel_files TEXT NOT NULL DEFAULT '[]',
       caption TEXT NOT NULL DEFAULT '',
       thumb_offset_ms INTEGER NOT NULL DEFAULT 0,
       scheduled_at TEXT NOT NULL,
@@ -156,6 +220,15 @@ function initSchema(db: DatabaseSync) {
       user_id TEXT NOT NULL,
       name TEXT NOT NULL,
       hashtags TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS caption_templates (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      folder TEXT NOT NULL DEFAULT 'Genel',
+      title TEXT NOT NULL,
+      content TEXT NOT NULL,
       created_at TEXT NOT NULL
     );
   `);

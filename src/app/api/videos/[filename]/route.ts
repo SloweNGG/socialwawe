@@ -24,6 +24,12 @@ export async function GET(
       ? "video/quicktime"
       : ext === ".webm"
       ? "video/webm"
+      : ext === ".jpg" || ext === ".jpeg"
+      ? "image/jpeg"
+      : ext === ".png"
+      ? "image/png"
+      : ext === ".webp"
+      ? "image/webp"
       : "video/mp4";
 
   return new NextResponse(fileBuffer, {

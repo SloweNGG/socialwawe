@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { getDb, User } from "./db";
+import { ensureCloudSyncedDb, User } from "./db";
 import crypto from "node:crypto";
 
 const SESSION_COOKIE = "socialwawe_session";
@@ -22,7 +22,7 @@ export function verifySessionToken(token: string): string | null {
 export async function getCurrentUser(): Promise<User> {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
-  const db = getDb();
+  const db = await ensureCloudSyncedDb();
 
   if (token) {
     const userId = verifySessionToken(token);

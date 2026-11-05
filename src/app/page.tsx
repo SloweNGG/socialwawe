@@ -54,7 +54,7 @@ interface Post extends CalendarPost {
 export default function HomePage() {
   const [activeTab, setActiveTab] = useState<
     "dashboard" | "single" | "bulk" | "calendar" | "accounts"
-  >("dashboard");
+  >("single");
 
   const [user, setUser] = useState<UserInfo | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -244,14 +244,19 @@ export default function HomePage() {
 
             <button
               onClick={() => setActiveTab("single")}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
                 activeTab === "single"
                   ? "bg-gradient-to-r from-pink-600/20 to-purple-600/20 text-white border border-pink-500/30"
                   : "text-gray-400 hover:text-white hover:bg-white/5"
               }`}
             >
-              <Film className="w-4 h-4 text-purple-400" />
-              Tekli Video Yükle
+              <span className="flex items-center gap-3">
+                <Film className="w-4 h-4 text-purple-400" />
+                Paylaşım & Carousel Stüdyosu
+              </span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-pink-500/20 text-pink-300">
+                Tümü
+              </span>
             </button>
 
             <button
@@ -352,7 +357,8 @@ export default function HomePage() {
           <div>
             <h1 className="text-xl font-bold text-white">
               {activeTab === "dashboard" && "Kontrol Paneli & Yayın Kuyruğu"}
-              {activeTab === "single" && "Tekli Video & Reels Stüdyosu"}
+              {activeTab === "single" &&
+                "Paylaşım & Carousel Stüdyosu (Reels • Carousel Bölücü • Fotoğraf • Hikaye)"}
               {activeTab === "bulk" &&
                 "Toplu Video Yükleme & Otomatik Sıraya Dizme"}
               {activeTab === "calendar" && "Sürükle-Bırak İçerik Takvimi"}
@@ -585,7 +591,6 @@ export default function HomePage() {
             accounts={accounts}
             onScheduled={() => {
               fetchAllData();
-              setActiveTab("dashboard");
             }}
           />
         ) : activeTab === "bulk" ? (

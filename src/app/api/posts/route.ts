@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb, ScheduledPost } from "@/lib/db";
+import { getDb, syncRowToCloud, deleteRowFromCloud, ScheduledPost } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { deleteStoredVideo } from "@/lib/storage";
 import { runDueScheduledPosts } from "@/lib/scheduler";
@@ -41,6 +41,11 @@ export async function POST(req: NextRequest) {
     } catch {
       // column already exists
     }
+    try {
+      db.exec("ALTER TABLE scheduled_posts ADD COLUMN carousel_files TEXT NOT NULL DEFAULT '[]';");
+    } catch {
+      // column already exists
+    }
     const now = new Date().toISOString();
 
     // Supports single item or array of items (for Bulk Auto-Queue)
@@ -50,9 +55,9 @@ export async function POST(req: NextRequest) {
     const insertStmt = db.prepare(`
       INSERT INTO scheduled_posts (
         id, user_id, account_id, media_type, video_filename, video_original_name,
-        video_url, video_size_bytes, caption, thumb_offset_ms, scheduled_at, delete_after_publish,
+        video_url, video_size_bytes, carousel_files, caption, thumb_offset_ms, scheduled_at, delete_after_publish,
         file_deleted, status, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'scheduled', ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'scheduled', ?)
     `);
 
     for (const item of items) {
@@ -60,22 +65,28 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
+      const carouselArr = Array.isArray(item.carouselFiles)
+        ? item.carouselFiles
+        : [];
+
       const postId = `post_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
       insertStmt.run(
         postId,
         user.id,
         item.accountId,
         item.mediaType || "REELS",
-        item.videoFilename || "external_video.mp4",
-        item.videoOriginalName || item.videoFilename || "video.mp4",
-        item.videoUrl || "/api/videos/external_video.mp4",
+        item.videoFilename || carouselArr[0] || "external_media.mp4",
+        item.videoOriginalName || item.videoFilename || "media",
+        item.videoUrl || `/api/videos/${item.videoFilename || carouselArr[0] || "media"}`,
         Number(item.videoSizeBytes || 0),
+        JSON.stringify(carouselArr),
         (item.caption || "").trim(),
         Math.max(0, Math.round(Number(item.thumbOffsetMs || 0))),
         new Date(item.scheduledAt).toISOString(),
         item.deleteAfterPublish === false || item.deleteAfterPublish === 0 ? 0 : 1,
         now
       );
+      syncRowToCloud("scheduled_posts", "id", postId);
       createdIds.push(postId);
     }
 
@@ -123,6 +134,7 @@ export async function PATCH(req: NextRequest) {
        WHERE id = ? AND user_id = ?`
     ).run(nextScheduledAt, nextCaption, nextDeleteAfter, id, user.id);
 
+    syncRowToCloud("scheduled_posts", "id", id);
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "Güncelleme hatası" }, { status: 500 });
@@ -146,12 +158,23 @@ export async function DELETE(req: NextRequest) {
 
     if (post && post.file_deleted === 0) {
       deleteStoredVideo(post.video_filename);
+      if (post.carousel_files) {
+        try {
+          const extraFiles: string[] = JSON.parse(post.carousel_files);
+          for (const f of extraFiles) {
+            deleteStoredVideo(f);
+          }
+        } catch {
+          // ignore
+        }
+      }
     }
 
     db.prepare("DELETE FROM scheduled_posts WHERE id = ? AND user_id = ?").run(
       id,
       user.id
     );
+    deleteRowFromCloud("scheduled_posts", id);
 
     return NextResponse.json({ ok: true });
   } catch {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb, HashtagGroup } from "@/lib/db";
+import { getDb, syncRowToCloud, deleteRowFromCloud, HashtagGroup } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 
 function ensureHashtagTable() {
@@ -61,6 +61,7 @@ export async function POST(req: NextRequest) {
       "INSERT INTO hashtag_groups (id, user_id, name, hashtags, created_at) VALUES (?, ?, ?, ?, ?)"
     ).run(id, user.id, name.trim(), formattedTags, now);
 
+    syncRowToCloud("hashtag_groups", "id", id);
     const created = db
       .prepare("SELECT * FROM hashtag_groups WHERE id = ?")
       .get(id) as unknown as HashtagGroup;
@@ -97,6 +98,7 @@ export async function PATCH(req: NextRequest) {
       "UPDATE hashtag_groups SET name = ?, hashtags = ? WHERE id = ? AND user_id = ?"
     ).run(name.trim(), formattedTags, id, user.id);
 
+    syncRowToCloud("hashtag_groups", "id", id);
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "Güncelleme hatası" }, { status: 500 });
@@ -118,6 +120,7 @@ export async function DELETE(req: NextRequest) {
       id,
       user.id
     );
+    deleteRowFromCloud("hashtag_groups", id);
 
     return NextResponse.json({ ok: true });
   } catch {

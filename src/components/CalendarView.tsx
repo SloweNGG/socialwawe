@@ -16,7 +16,7 @@ export interface CalendarPost {
   id: string;
   account_id: string;
   account_username?: string;
-  media_type: "REELS" | "VIDEO" | "STORIES";
+  media_type: "REELS" | "VIDEO" | "STORIES" | "IMAGE" | "CAROUSEL";
   video_original_name: string;
   caption: string;
   scheduled_at: string;

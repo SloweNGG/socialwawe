@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb, InstagramAccount } from "@/lib/db";
+import { getDb, syncRowToCloud, deleteRowFromCloud, InstagramAccount } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 
 export async function GET() {
@@ -61,6 +61,7 @@ export async function POST(req: NextRequest) {
       const created = db
         .prepare("SELECT * FROM instagram_accounts WHERE id = ?")
         .get(id);
+      syncRowToCloud("instagram_accounts", "id", id);
       return NextResponse.json({ account: created });
     }
 
@@ -145,6 +146,7 @@ export async function POST(req: NextRequest) {
     const created = db
       .prepare("SELECT * FROM instagram_accounts WHERE id = ?")
       .get(id);
+    syncRowToCloud("instagram_accounts", "id", id);
     return NextResponse.json({ account: created });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Sunucu hatası";
@@ -165,6 +167,7 @@ export async function DELETE(req: NextRequest) {
     db.prepare(
       "DELETE FROM instagram_accounts WHERE id = ? AND user_id = ?"
     ).run(id, user.id);
+    deleteRowFromCloud("instagram_accounts", id);
 
     return NextResponse.json({ ok: true });
   } catch {

@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
 
     if (!file) {
       return NextResponse.json(
-        { error: "Yüklenecek video dosyası bulunamadı." },
+        { error: "Yüklenecek medya dosyası bulunamadı." },
         { status: 400 }
       );
     }
@@ -18,7 +18,11 @@ export async function POST(req: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    const saved = saveUploadedVideo(buffer, file.name);
+    const saved = await saveUploadedVideo(
+      buffer,
+      file.name,
+      file.type || "video/mp4"
+    );
 
     return NextResponse.json({
       filename: saved.filename,
@@ -31,4 +35,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-

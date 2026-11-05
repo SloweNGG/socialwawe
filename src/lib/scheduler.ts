@@ -1,4 +1,10 @@
-import { getDb, InstagramAccount, ScheduledPost, AppSettings } from "./db";
+import {
+  ensureCloudSyncedDb,
+  syncRowToCloud,
+  InstagramAccount,
+  ScheduledPost,
+  AppSettings,
+} from "./db";
 import { publishVideoToInstagram } from "./instagram";
 import { deleteStoredVideo } from "./storage";
 
@@ -7,7 +13,7 @@ export async function processSinglePost(postId: string): Promise<{
   post?: ScheduledPost;
   error?: string;
 }> {
-  const db = getDb();
+  const db = await ensureCloudSyncedDb();
 
   const post = db
     .prepare("SELECT * FROM scheduled_posts WHERE id = ?")
@@ -47,6 +53,16 @@ export async function processSinglePost(postId: string): Promise<{
     let fileDeleted = post.file_deleted;
     if (post.delete_after_publish === 1) {
       const removed = deleteStoredVideo(post.video_filename);
+      if (post.carousel_files) {
+        try {
+          const extraFiles: string[] = JSON.parse(post.carousel_files);
+          for (const f of extraFiles) {
+            deleteStoredVideo(f);
+          }
+        } catch {
+          // ignore
+        }
+      }
       if (removed) {
         fileDeleted = 1;
       }
@@ -76,6 +92,7 @@ export async function processSinglePost(postId: string): Promise<{
       .prepare("SELECT * FROM scheduled_posts WHERE id = ?")
       .get(postId) as unknown as ScheduledPost;
 
+    syncRowToCloud("scheduled_posts", "id", postId);
     return { success: true, post: updated };
   } else {
     db.prepare(`
@@ -90,6 +107,7 @@ export async function processSinglePost(postId: string): Promise<{
       postId
     );
 
+    syncRowToCloud("scheduled_posts", "id", postId);
     return { success: false, error: result.error };
   }
 }
@@ -99,7 +117,7 @@ export async function runDueScheduledPosts(): Promise<{
   publishedIds: string[];
   failedIds: string[];
 }> {
-  const db = getDb();
+  const db = await ensureCloudSyncedDb();
   const nowIso = new Date().toISOString();
 
   const duePosts = db

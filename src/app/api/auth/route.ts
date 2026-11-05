@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb, hashPassword, User } from "@/lib/db";
+import { getDb, syncRowToCloud, hashPassword, User } from "@/lib/db";
 import { createSessionToken, getCurrentUser, SESSION_COOKIE } from "@/lib/auth";
 import { cookies } from "next/headers";
 
@@ -68,6 +68,9 @@ export async function POST(req: NextRequest) {
       `INSERT INTO app_settings (user_id, meta_app_id, meta_app_secret, public_base_url, default_delete_after_publish, default_queue_times)
        VALUES (?, '', '', '', 1, '["19:00"]')`
     ).run(userId);
+
+    syncRowToCloud("users", "id", userId);
+    syncRowToCloud("app_settings", "user_id", userId);
 
     const token = createSessionToken(userId);
     cookieStore.set(SESSION_COOKIE, token, {

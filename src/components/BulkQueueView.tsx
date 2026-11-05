@@ -13,6 +13,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import HashtagGroupsPicker from "./HashtagGroupsPicker";
+import CaptionTemplatesPicker from "./CaptionTemplatesPicker";
 
 interface Account {
   id: string;
@@ -395,6 +396,15 @@ export default function BulkQueueView({ accounts, onScheduled }: Props) {
               placeholder="#reels #keşfet"
               className="w-full rounded-xl bg-[#0b0d14] border border-white/10 p-3 text-xs text-white focus:border-pink-500 focus:outline-none"
             />
+            <CaptionTemplatesPicker
+              currentCaption={sharedHashtags}
+              onSelectTemplate={(tplContent) =>
+                setSharedHashtags((prev) =>
+                  prev ? `${prev.trim()}\n\n${tplContent}` : tplContent
+                )
+              }
+            />
+
             <HashtagGroupsPicker
               onSelectHashtags={(tags) =>
                 setSharedHashtags((prev) =>
