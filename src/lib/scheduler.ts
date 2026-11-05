@@ -38,10 +38,11 @@ export async function processSinglePost(postId: string): Promise<{
     .prepare("SELECT * FROM app_settings WHERE user_id = ?")
     .get(post.user_id) as unknown as AppSettings | undefined;
 
-  // Mark as processing
+  // Mark as processing and immediately sync to Appwrite Cloud to prevent duplicate cron triggers
   db.prepare(
     "UPDATE scheduled_posts SET status = 'processing', error_message = NULL WHERE id = ?"
   ).run(postId);
+  await syncRowToCloud("scheduled_posts", "id", postId);
 
   const result = await publishVideoToInstagram(
     account,
@@ -92,7 +93,7 @@ export async function processSinglePost(postId: string): Promise<{
       .prepare("SELECT * FROM scheduled_posts WHERE id = ?")
       .get(postId) as unknown as ScheduledPost;
 
-    syncRowToCloud("scheduled_posts", "id", postId);
+    await syncRowToCloud("scheduled_posts", "id", postId);
     return { success: true, post: updated };
   } else {
     db.prepare(`
@@ -107,7 +108,7 @@ export async function processSinglePost(postId: string): Promise<{
       postId
     );
 
-    syncRowToCloud("scheduled_posts", "id", postId);
+    await syncRowToCloud("scheduled_posts", "id", postId);
     return { success: false, error: result.error };
   }
 }
