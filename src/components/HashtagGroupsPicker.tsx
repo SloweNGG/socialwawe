@@ -174,7 +174,7 @@ export default function HashtagGroupsPicker({ onSelectHashtags }: Props) {
                   required
                   value={groupName}
                   onChange={(e) => setGroupName(e.target.value)}
-                  placeholder="Örn: 🎬 Sinema & Kesit"
+                  placeholder="Örn: Sinema & Kesit"
                   className="w-full rounded-xl bg-[#121521] border border-white/10 px-3 py-2 text-xs text-white focus:border-pink-500 focus:outline-none"
                 />
               </div>

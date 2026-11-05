@@ -10,6 +10,7 @@ import {
   Edit3,
   Check,
   X,
+  Copy,
 } from "lucide-react";
 
 export interface CaptionTemplateItem {
@@ -153,13 +154,14 @@ export default function CaptionTemplatesPicker({
             <button
               type="button"
               onClick={() => setActiveFolder("ALL")}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition cursor-pointer ${
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition inline-flex items-center gap-1 cursor-pointer ${
                 activeFolder === "ALL"
                   ? "bg-purple-600/25 border-purple-500/50 text-purple-200"
                   : "bg-[#0b0d14] border-white/10 text-gray-400 hover:text-white"
               }`}
             >
-              📁 Tümü ({templates.length})
+              <Folder className="w-3 h-3 text-purple-400" />
+              <span>Tümü ({templates.length})</span>
             </button>
           )}
 
@@ -239,9 +241,10 @@ export default function CaptionTemplatesPicker({
                 <button
                   type="button"
                   onClick={() => setContent(currentCaption.trim())}
-                  className="text-[11px] px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-purple-200 font-medium cursor-pointer"
+                  className="text-[11px] px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-purple-200 font-medium inline-flex items-center gap-1.5 cursor-pointer"
                 >
-                  📋 Yukarıdaki Açıklamayı Şablona Kopyala
+                  <Copy className="w-3 h-3" />
+                  Yukarıdaki Açıklamayı Şablona Kopyala
                 </button>
               )}
               {editingId && (

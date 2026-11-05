@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb, syncRowToCloud, hashPassword, User } from "@/lib/db";
+import { ensureCloudSyncedDb, syncRowToCloud, hashPassword, User } from "@/lib/db";
 import { createSessionToken, getCurrentUser, SESSION_COOKIE } from "@/lib/auth";
 import { cookies } from "next/headers";
 
@@ -22,7 +22,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const { action, name, email, password } = body;
-  const db = getDb();
+  const db = await ensureCloudSyncedDb();
   const cookieStore = await cookies();
 
   if (action === "logout") {
@@ -69,8 +69,8 @@ export async function POST(req: NextRequest) {
        VALUES (?, '', '', '', 1, '["19:00"]')`
     ).run(userId);
 
-    syncRowToCloud("users", "id", userId);
-    syncRowToCloud("app_settings", "user_id", userId);
+    await syncRowToCloud("users", "id", userId);
+    await syncRowToCloud("app_settings", "user_id", userId);
 
     const token = createSessionToken(userId);
     cookieStore.set(SESSION_COOKIE, token, {

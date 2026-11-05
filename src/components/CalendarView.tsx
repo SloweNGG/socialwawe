@@ -10,6 +10,9 @@ import {
   AlertCircle,
   Trash2,
   Send,
+  X,
+  Zap,
+  HardDrive,
 } from "lucide-react";
 
 export interface CalendarPost {
@@ -227,9 +230,9 @@ export default function CalendarView({
               </span>
               <button
                 onClick={() => setSelectedPost(null)}
-                className="text-xs text-gray-400 hover:text-white"
+                className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white cursor-pointer"
               >
-                Kapat ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -267,12 +270,23 @@ export default function CalendarView({
                 )}
               </span>
 
-              <span>
-                {selectedPost.file_deleted
-                  ? "🗑️ Dosya otomatik silindi"
-                  : selectedPost.delete_after_publish
-                  ? "⚡ Yayınlanınca silinecek"
-                  : "💾 Arşivde tutulacak"}
+              <span className="inline-flex items-center gap-1">
+                {selectedPost.file_deleted ? (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5 text-emerald-400" />
+                    Dosya otomatik silindi
+                  </>
+                ) : selectedPost.delete_after_publish ? (
+                  <>
+                    <Zap className="w-3.5 h-3.5 text-amber-400" />
+                    Yayınlanınca silinecek
+                  </>
+                ) : (
+                  <>
+                    <HardDrive className="w-3.5 h-3.5 text-gray-400" />
+                    Arşivde tutulacak
+                  </>
+                )}
               </span>
             </div>
 

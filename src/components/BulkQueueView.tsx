@@ -81,7 +81,7 @@ export default function BulkQueueView({ accounts, onScheduled }: Props) {
         videoOriginalName: file.name,
         videoUrl: "",
         videoSizeBytes: file.size,
-        caption: `${cleanTitle} 🚀`,
+        caption: cleanTitle,
         uploading: true,
         uploaded: false,
       };

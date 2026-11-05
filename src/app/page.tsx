@@ -9,14 +9,24 @@ import {
   Settings,
   Instagram,
   CheckCircle2,
+  XCircle,
   Clock,
   Trash2,
   Send,
   RefreshCw,
   LogOut,
+  LogIn,
   UserPlus,
   ExternalLink,
   HardDrive,
+  Mail,
+  Lock,
+  User,
+  Zap,
+  Plus,
+  X,
+  Sparkles,
+  ShieldCheck,
 } from "lucide-react";
 import SingleStudioView from "@/components/SingleStudioView";
 import BulkQueueView from "@/components/BulkQueueView";
@@ -70,11 +80,12 @@ export default function HomePage() {
 
   // SaaS Auth Modal state
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
-  const [authMode, setAuthMode] = useState<"login" | "register">("register");
+  const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [authName, setAuthName] = useState("");
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authError, setAuthError] = useState<string | null>(null);
+  const [authSubmitting, setAuthSubmitting] = useState<boolean>(false);
 
   const fetchAllData = useCallback(async () => {
     try {
@@ -178,26 +189,42 @@ export default function HomePage() {
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
-    const res = await fetch("/api/auth", {
+    setAuthSubmitting(true);
+    try {
+      const res = await fetch("/api/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: authMode,
+          name: authName,
+          email: authEmail,
+          password: authPassword,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAuthError(data.error || "İşlem başarısız.");
+      } else {
+        setShowAuthModal(false);
+        setAuthName("");
+        setAuthEmail("");
+        setAuthPassword("");
+        await fetchAllData();
+      }
+    } finally {
+      setAuthSubmitting(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await fetch("/api/auth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: authMode,
-        name: authName,
-        email: authEmail,
-        password: authPassword,
-      }),
+      body: JSON.stringify({ action: "logout" }),
     });
-    const data = await res.json();
-    if (!res.ok) {
-      setAuthError(data.error || "İşlem başarısız.");
-    } else {
-      setShowAuthModal(false);
-      setAuthName("");
-      setAuthEmail("");
-      setAuthPassword("");
-      await fetchAllData();
-    }
+    setUser(null);
+    setAccounts([]);
+    setPosts([]);
   };
 
   const scheduledCount = posts.filter((p) => p.status === "scheduled").length;
@@ -205,6 +232,174 @@ export default function HomePage() {
   const cleanedStorageBytes = posts
     .filter((p) => p.file_deleted === 1)
     .reduce((acc, p) => acc + (p.video_size_bytes || 15000000), 0);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#070910] flex items-center justify-center p-6">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-pink-600 via-purple-600 to-amber-500 flex items-center justify-center shadow-lg shadow-pink-600/20 animate-pulse">
+            <Instagram className="w-6 h-6 text-white" />
+          </div>
+          <span className="text-xs font-medium text-gray-400">
+            SocialWawe yükleniyor...
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  // Full-Screen Login / Register Gate when unauthenticated
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-[#070910] flex items-center justify-center p-4 relative overflow-hidden">
+        <div className="absolute -top-40 -left-40 w-96 h-96 bg-pink-600/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-purple-600/15 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="w-full max-w-md rounded-3xl border border-white/10 bg-[#121521]/95 backdrop-blur-xl p-7 shadow-2xl space-y-6 relative z-10">
+          {/* Brand Header */}
+          <div className="flex flex-col items-center text-center space-y-2">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-pink-600 via-purple-600 to-amber-500 flex items-center justify-center shadow-lg shadow-pink-600/25">
+              <Instagram className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-extrabold text-white tracking-tight">
+                SocialWawe
+              </h1>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Instagram Reels, Carousel Bölücü & Otomatik Zamanlama Stüdyosu
+              </p>
+            </div>
+          </div>
+
+          {/* Mode Tabs */}
+          <div className="grid grid-cols-2 rounded-xl bg-[#0b0d14] p-1 border border-white/10 text-xs">
+            <button
+              type="button"
+              onClick={() => {
+                setAuthMode("login");
+                setAuthError(null);
+              }}
+              className={`py-2 rounded-lg font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                authMode === "login"
+                  ? "bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              Giriş Yap
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAuthMode("register");
+                setAuthError(null);
+              }}
+              className={`py-2 rounded-lg font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                authMode === "register"
+                  ? "bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              Kayıt Ol
+            </button>
+          </div>
+
+          {/* Auth Form */}
+          <form onSubmit={handleAuthSubmit} className="space-y-4">
+            {authMode === "register" && (
+              <div>
+                <label className="block text-xs text-gray-400 mb-1.5">
+                  Ad Soyad
+                </label>
+                <div className="relative">
+                  <User className="w-4 h-4 text-gray-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    required
+                    value={authName}
+                    onChange={(e) => setAuthName(e.target.value)}
+                    placeholder="Adınız Soyadınız"
+                    className="w-full rounded-xl bg-[#0b0d14] border border-white/10 pl-10 pr-3.5 py-2.5 text-sm text-white focus:border-pink-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-xs text-gray-400 mb-1.5">
+                E-posta Adresi
+              </label>
+              <div className="relative">
+                <Mail className="w-4 h-4 text-gray-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="email"
+                  required
+                  value={authEmail}
+                  onChange={(e) => setAuthEmail(e.target.value)}
+                  placeholder="ornek@email.com"
+                  className="w-full rounded-xl bg-[#0b0d14] border border-white/10 pl-10 pr-3.5 py-2.5 text-sm text-white focus:border-pink-500 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs text-gray-400 mb-1.5">
+                Şifre
+              </label>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-gray-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="password"
+                  required
+                  value={authPassword}
+                  onChange={(e) => setAuthPassword(e.target.value)}
+                  placeholder="••••••"
+                  className="w-full rounded-xl bg-[#0b0d14] border border-white/10 pl-10 pr-3.5 py-2.5 text-sm text-white focus:border-pink-500 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {authError && (
+              <div className="p-3 rounded-xl bg-red-500/15 border border-red-500/30 text-red-300 text-xs flex items-center gap-2">
+                <XCircle className="w-4 h-4 shrink-0" />
+                <span>{authError}</span>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={authSubmitting}
+              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 disabled:opacity-50 text-white font-semibold text-sm flex items-center justify-center gap-2 shadow-lg shadow-pink-600/20 transition cursor-pointer"
+            >
+              {authMode === "register" ? (
+                <>
+                  <UserPlus className="w-4 h-4" />
+                  {authSubmitting ? "Hesap Oluşturuluyor..." : "Hesap Oluştur ve Başla"}
+                </>
+              ) : (
+                <>
+                  <LogIn className="w-4 h-4" />
+                  {authSubmitting ? "Giriş Yapılıyor..." : "Stüdyoya Giriş Yap"}
+                </>
+              )}
+            </button>
+          </form>
+
+          <div className="pt-3 border-t border-white/10 flex items-center justify-center gap-4 text-[11px] text-gray-500">
+            <span className="flex items-center gap-1">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              Resmi Meta Graph API
+            </span>
+            <span className="flex items-center gap-1">
+              <Sparkles className="w-3.5 h-3.5 text-pink-400" />
+              7/24 Bulut Zamanlayıcı
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
@@ -309,44 +504,38 @@ export default function HomePage() {
             Zamanlayıcı Motoru Aktif
           </div>
 
-          {user ? (
-            <div className="p-3 rounded-xl bg-[#121521] border border-white/10 space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="truncate">
-                  <div className="text-xs font-bold text-white truncate">
-                    {user.name}
-                  </div>
-                  <div className="text-[11px] text-gray-400 truncate">
-                    {user.email}
-                  </div>
+          <div className="p-3 rounded-xl bg-[#121521] border border-white/10 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="truncate">
+                <div className="text-xs font-bold text-white truncate">
+                  {user.name}
                 </div>
-                <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-pink-500/20 text-pink-300">
-                  {user.plan}
-                </span>
+                <div className="text-[11px] text-gray-400 truncate">
+                  {user.email}
+                </div>
               </div>
-              <div className="flex items-center gap-2 pt-1">
-                <button
-                  onClick={() => {
-                    setAuthMode("register");
-                    setShowAuthModal(true);
-                  }}
-                  className="flex-1 text-[11px] py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 flex items-center justify-center gap-1"
-                >
-                  <UserPlus className="w-3 h-3" /> Yeni Üye / Hesap
-                </button>
-              </div>
+              <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-pink-500/20 text-pink-300">
+                {user.plan}
+              </span>
             </div>
-          ) : (
-            <button
-              onClick={() => {
-                setAuthMode("login");
-                setShowAuthModal(true);
-              }}
-              className="w-full py-2 rounded-xl bg-pink-600 text-white text-xs font-semibold"
-            >
-              Giriş Yap / Üye Ol
-            </button>
-          )}
+            <div className="grid grid-cols-2 gap-1.5 pt-1">
+              <button
+                onClick={() => {
+                  setAuthMode("register");
+                  setShowAuthModal(true);
+                }}
+                className="text-[11px] py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 flex items-center justify-center gap-1 cursor-pointer"
+              >
+                <UserPlus className="w-3 h-3" /> Yeni Üye
+              </button>
+              <button
+                onClick={handleLogout}
+                className="text-[11px] py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-300 flex items-center justify-center gap-1 cursor-pointer"
+              >
+                <LogOut className="w-3 h-3" /> Çıkış Yap
+              </button>
+            </div>
+          </div>
         </div>
       </aside>
 
@@ -450,9 +639,9 @@ export default function HomePage() {
                 </div>
                 <button
                   onClick={() => setActiveTab("accounts")}
-                  className="text-[11px] text-pink-400 hover:underline mt-1 inline-block"
+                  className="text-[11px] text-pink-400 hover:underline mt-1 inline-flex items-center gap-1 cursor-pointer"
                 >
-                  + Yeni hesap bağla veya yönet
+                  <Plus className="w-3 h-3" /> Yeni hesap bağla veya yönet
                 </button>
               </div>
             </div>
@@ -461,21 +650,21 @@ export default function HomePage() {
             <div className="rounded-2xl border border-white/10 bg-[#121521] p-6 space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-base font-bold text-white">
-                  Zamanlanmış ve Yayınlanmış Videolar ({posts.length})
+                  Zamanlanmış ve Yayınlanmış Gönderiler ({posts.length})
                 </h2>
                 <div className="flex gap-2">
                   <button
                     onClick={() => setActiveTab("single")}
-                    className="text-xs px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-medium"
+                    className="text-xs px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-medium inline-flex items-center gap-1.5 cursor-pointer"
                   >
-                    + Tekli Video Ekle
+                    <Plus className="w-3.5 h-3.5" /> Yeni Gönderi Ekle
                   </button>
                 </div>
               </div>
 
               {posts.length === 0 ? (
                 <div className="text-center py-12 text-gray-500 text-sm">
-                  Henüz planlanmış bir video yok. Hemen tekli veya toplu video yükleyerek başlayın!
+                  Henüz planlanmış bir gönderi yok. Hemen tekli veya toplu içerik yükleyerek başlayın!
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -497,26 +686,26 @@ export default function HomePage() {
                           </span>
 
                           {post.status === "published" ? (
-                            <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-medium">
-                              ✓ Yayınlandı
+                            <span className="inline-flex items-center gap-1 text-[11px] px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-medium">
+                              <CheckCircle2 className="w-3 h-3" /> Yayınlandı
                             </span>
                           ) : post.status === "failed" ? (
-                            <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-red-500/15 text-red-300 border border-red-500/30 font-medium">
-                              ✕ Hata: {post.error_message}
+                            <span className="inline-flex items-center gap-1 text-[11px] px-2.5 py-0.5 rounded-full bg-red-500/15 text-red-300 border border-red-500/30 font-medium">
+                              <XCircle className="w-3 h-3" /> Hata: {post.error_message}
                             </span>
                           ) : (
-                            <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 font-medium">
-                              ⏳ Sırada Bekliyor
+                            <span className="inline-flex items-center gap-1 text-[11px] px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 font-medium">
+                              <Clock className="w-3 h-3" /> Sırada Bekliyor
                             </span>
                           )}
 
                           {post.file_deleted === 1 ? (
-                            <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300">
-                              🗑️ Dosya Sunucudan Silindi
+                            <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300">
+                              <Trash2 className="w-3 h-3" /> Dosya Sunucudan Silindi
                             </span>
                           ) : post.delete_after_publish === 1 ? (
-                            <span className="text-[10px] px-2 py-0.5 rounded bg-white/5 text-gray-400">
-                              ⚡ Yayınlanınca Silinecek
+                            <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-white/5 text-gray-400">
+                              <Zap className="w-3 h-3 text-amber-400" /> Yayınlanınca Silinecek
                             </span>
                           ) : null}
                         </div>
@@ -629,9 +818,9 @@ export default function HomePage() {
               </h3>
               <button
                 onClick={() => setShowAuthModal(false)}
-                className="text-xs text-gray-400 hover:text-white"
+                className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white cursor-pointer"
               >
-                Kapat ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 

@@ -8,7 +8,10 @@ import {
   ShieldCheck,
   Sparkles,
   CheckCircle2,
+  AlertCircle,
   Film,
+  Video,
+  Zap,
   Send,
   Image as ImageIcon,
   Scissors,
@@ -467,12 +470,12 @@ export default function SingleStudioView({ accounts, onScheduled }: Props) {
           }
           setStatusMessage({
             type: "success",
-            text: "✓ Kaydırmalı (Carousel) gönderi Instagram'da başarıyla yayınlandı!",
+            text: "Kaydırmalı (Carousel) gönderi Instagram'da başarıyla yayınlandı!",
           });
         } else {
           setStatusMessage({
             type: "success",
-            text: "✓ Kaydırmalı (Carousel) gönderi seçilen tarihe zamanlandı!",
+            text: "Kaydırmalı (Carousel) gönderi seçilen tarihe zamanlandı!",
           });
         }
 
@@ -534,12 +537,12 @@ export default function SingleStudioView({ accounts, onScheduled }: Props) {
         }
         setStatusMessage({
           type: "success",
-          text: "✓ İçerik Instagram'da başarıyla yayınlandı!",
+          text: "İçerik Instagram'da başarıyla yayınlandı!",
         });
       } else {
         setStatusMessage({
           type: "success",
-          text: "✓ İçerik seçilen tarihe başarıyla zamanlandı!",
+          text: "İçerik seçilen tarihe başarıyla zamanlandı!",
         });
       }
 
@@ -608,29 +611,33 @@ export default function SingleStudioView({ accounts, onScheduled }: Props) {
             <div className="grid grid-cols-5 gap-1.5">
               {(
                 [
-                  { id: "REELS", label: "🎬 Reels" },
-                  { id: "CAROUSEL", label: "✂️ Carousel / Bölücü" },
-                  { id: "IMAGE", label: "🖼️ Fotoğraf" },
-                  { id: "VIDEO", label: "📹 Video" },
-                  { id: "STORIES", label: "⚡ Hikaye" },
+                  { id: "REELS", label: "Reels", Icon: Film },
+                  { id: "CAROUSEL", label: "Carousel / Bölücü", Icon: Scissors },
+                  { id: "IMAGE", label: "Fotoğraf", Icon: ImageIcon },
+                  { id: "VIDEO", label: "Video", Icon: Video },
+                  { id: "STORIES", label: "Hikaye", Icon: Zap },
                 ] as const
-              ).map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => {
-                    setMediaType(t.id);
-                    setStatusMessage(null);
-                  }}
-                  className={`py-2.5 px-2 rounded-xl text-xs font-semibold border transition cursor-pointer ${
-                    mediaType === t.id
-                      ? "bg-pink-600/20 border-pink-500 text-pink-200 shadow-sm"
-                      : "bg-[#0b0d14] border-white/10 text-gray-400 hover:text-white"
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
+              ).map((t) => {
+                const IconComp = t.Icon;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => {
+                      setMediaType(t.id);
+                      setStatusMessage(null);
+                    }}
+                    className={`py-2.5 px-2 rounded-xl text-xs font-semibold border transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                      mediaType === t.id
+                        ? "bg-pink-600/20 border-pink-500 text-pink-200 shadow-sm"
+                        : "bg-[#0b0d14] border-white/10 text-gray-400 hover:text-white"
+                    }`}
+                  >
+                    <IconComp className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">{t.label}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -653,24 +660,26 @@ export default function SingleStudioView({ accounts, onScheduled }: Props) {
                 <button
                   type="button"
                   onClick={() => setCarouselSubMode("splitter")}
-                  className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-lg font-semibold transition inline-flex items-center gap-1.5 cursor-pointer ${
                     carouselSubMode === "splitter"
                       ? "bg-pink-600 text-white"
                       : "text-gray-400 hover:text-white"
                   }`}
                 >
-                  ✂️ Tek Görseli Parçalara Böl (ImgShifter)
+                  <Scissors className="w-3.5 h-3.5" />
+                  Tek Görseli Parçalara Böl (ImgShifter)
                 </button>
                 <button
                   type="button"
                   onClick={() => setCarouselSubMode("multi_upload")}
-                  className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-lg font-semibold transition inline-flex items-center gap-1.5 cursor-pointer ${
                     carouselSubMode === "multi_upload"
                       ? "bg-purple-600 text-white"
                       : "text-gray-400 hover:text-white"
                   }`}
                 >
-                  📚 Birden Fazla Fotoğraf Seç (2-10)
+                  <Layers className="w-3.5 h-3.5" />
+                  Birden Fazla Fotoğraf Seç (2-10)
                 </button>
               </div>
             </div>
@@ -1002,9 +1011,10 @@ export default function SingleStudioView({ accounts, onScheduled }: Props) {
                       <button
                         type="button"
                         onClick={handleCaptureCurrentFrame}
-                        className="text-xs px-3 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-white font-medium transition cursor-pointer"
+                        className="text-xs px-3 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-white font-medium transition inline-flex items-center gap-1.5 cursor-pointer"
                       >
-                        📸 Önizlemedeki Anlık Kareyi Seç
+                        <Camera className="w-3.5 h-3.5 text-pink-400" />
+                        Önizlemedeki Anlık Kareyi Seç
                       </button>
                     </div>
                   </div>
@@ -1106,7 +1116,7 @@ export default function SingleStudioView({ accounts, onScheduled }: Props) {
 
         {statusMessage && (
           <div
-            className={`p-3.5 rounded-xl text-xs font-medium border ${
+            className={`p-3.5 rounded-xl text-xs font-medium border flex items-center gap-2 ${
               statusMessage.type === "success"
                 ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-300"
                 : statusMessage.type === "error"
@@ -1114,7 +1124,14 @@ export default function SingleStudioView({ accounts, onScheduled }: Props) {
                 : "bg-pink-500/15 border-pink-500/30 text-pink-200"
             }`}
           >
-            {statusMessage.text}
+            {statusMessage.type === "success" ? (
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+            ) : statusMessage.type === "error" ? (
+              <AlertCircle className="w-4 h-4 shrink-0" />
+            ) : (
+              <Sparkles className="w-4 h-4 shrink-0" />
+            )}
+            <span>{statusMessage.text}</span>
           </div>
         )}
 

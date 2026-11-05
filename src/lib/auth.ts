@@ -32,13 +32,6 @@ export async function getCurrentUser(): Promise<User> {
     }
   }
 
-  // Fallback to default seeded owner account for seamless initial setup unless logged out explicitly
-  const loggedOut = cookieStore.get("socialwawe_logged_out")?.value === "1";
-  if (!loggedOut) {
-    const fallback = db.prepare("SELECT * FROM users WHERE id = 'usr_default_admin'").get() as unknown as User | undefined;
-    if (fallback) return fallback;
-  }
-
   throw new Error("UNAUTHORIZED");
 }
 
