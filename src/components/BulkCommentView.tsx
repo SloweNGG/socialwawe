@@ -639,3 +639,4 @@ export default function BulkCommentView({ accounts }: Props) {
     </div>
   );
 }
+
