@@ -27,9 +27,11 @@ import {
   X,
   Sparkles,
   ShieldCheck,
+  MessageSquarePlus,
 } from "lucide-react";
 import SingleStudioView from "@/components/SingleStudioView";
 import BulkQueueView from "@/components/BulkQueueView";
+import BulkCommentView from "@/components/BulkCommentView";
 import CalendarView, { CalendarPost } from "@/components/CalendarView";
 import MetaSetupGuide from "@/components/MetaSetupGuide";
 
@@ -63,7 +65,7 @@ interface Post extends CalendarPost {
 
 export default function HomePage() {
   const [activeTab, setActiveTab] = useState<
-    "dashboard" | "single" | "bulk" | "calendar" | "accounts"
+    "dashboard" | "single" | "bulk" | "comments" | "calendar" | "accounts"
   >("single");
 
   const [user, setUser] = useState<UserInfo | null>(null);
@@ -472,6 +474,23 @@ export default function HomePage() {
             </button>
 
             <button
+              onClick={() => setActiveTab("comments")}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                activeTab === "comments"
+                  ? "bg-gradient-to-r from-pink-600/20 to-purple-600/20 text-white border border-pink-500/30"
+                  : "text-gray-400 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <span className="flex items-center gap-3">
+                <MessageSquarePlus className="w-4 h-4 text-pink-400" />
+                Toplu Yorum Stüdyosu
+              </span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-pink-500/20 text-pink-300">
+                Yeni
+              </span>
+            </button>
+
+            <button
               onClick={() => setActiveTab("calendar")}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
                 activeTab === "calendar"
@@ -550,6 +569,8 @@ export default function HomePage() {
                 "Paylaşım & Carousel Stüdyosu (Reels • Carousel Bölücü • Fotoğraf • Hikaye)"}
               {activeTab === "bulk" &&
                 "Toplu Video Yükleme & Otomatik Sıraya Dizme"}
+              {activeTab === "comments" &&
+                "Toplu Yorum Stüdyosu (Tüm Reels ve Gönderilere Yorum At)"}
               {activeTab === "calendar" && "Sürükle-Bırak İçerik Takvimi"}
               {activeTab === "accounts" &&
                 "Instagram Hesapları & Meta API Kurulumu"}
@@ -790,6 +811,8 @@ export default function HomePage() {
               setActiveTab("calendar");
             }}
           />
+        ) : activeTab === "comments" ? (
+          <BulkCommentView accounts={accounts} />
         ) : activeTab === "calendar" ? (
           <CalendarView
             posts={posts}
